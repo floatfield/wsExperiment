@@ -34,7 +34,7 @@ describe 'Dull cache test suit', ->
       keys = R.map((i) ->
         key = 'key' + i
         cache.set key, 'value' + i
-        key)(R.range(1,1000))
+        key)(R.range(1,10))
       expect(keys).to.eql(cache.keys())
       clock.tick 41000
       expect(cache.keys()).to.be.empty

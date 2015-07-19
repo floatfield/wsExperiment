@@ -1,7 +1,7 @@
 chai = require 'chai'
 spies = require 'chai-spies'
 expect = chai.expect
-NodeCache = require 'node-cache'
+NodeCache = require '../lib/dull-cache'
 SocketServer = require '../lib/SocketServer.js'
 sinon = require 'sinon'
 
@@ -17,8 +17,8 @@ describe 'Socket server test suite', ->
   clock = {}
   port = 9090
   cache = new NodeCache
-    stdTTL: 30
-    checkPeriod: 40
+    stdTTL: 500
+    checkPeriod: 600
 
   beforeEach () ->
     socketServer = new SocketServer
@@ -46,19 +46,16 @@ describe 'Socket server test suite', ->
     it 'should populate applied cache with received user credentials', ->
       socketServer.setUserToken 12, 'some token'
       expect(cache.get(12)).to.exist
-      clock.tick 40000
-      expect(cache.get(12)).not.to.exist
 
-    # it 'should remove user record from cache when wrong token from client received', (done) ->
-    #   validateCache = ->
-    #     # clock.tick 10
-    #     expect(cache.get(15)).not.to.exist
-    #     done()
-    #   onConnect = ->
-    #     this.emit 'token', {userId: 15, token: 'another token'}
-    #     validateCache()
-    #   socketServer.setUserToken 15, 'some token'
-    #   console.log 'get entry-15', cache.get(15)
-    #   expect(cache.get(15)).to.exist
-    #   socketClient = getSocketClient port
-    #   socketClient.on 'connect', onConnect
+    it 'should remove user record from cache when wrong token from client received', (done) ->
+      validateCache = ->
+        clock.tick 10
+        expect(cache.get(15)).not.to.exist
+        done()
+      onConnect = ->
+        this.emit 'token', {userId: 15, token: 'another token'}
+        validateCache()
+      socketServer.setUserToken 15, 'some token'
+      expect(cache.get(15)).to.exist
+      socketClient = getSocketClient port
+      socketClient.on 'connect', onConnect
