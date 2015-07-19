@@ -1,0 +1,28 @@
+<html>
+    <head>
+        <title>lol what?</title>
+        <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+    </head>
+    <body>
+        <button id="send-token">send token</button>
+        <button id="connect">connect</button>
+        <div>{{ id }}</div>
+    <script>
+        var id = "{{ id }}",
+            ids = "{{ ids }}".split(','),
+            socket = io.connect('http://localhost:8085');
+        socket.on('news', function (data) {
+            console.log(data);
+            socket.emit('my other event', { my: 'data' });
+        });
+        socket.on('connect', function(){
+            console.log('connection');
+            socket.emit('some', {foo: 'bar'});
+        });
+        $('#send-token').on('click', function(){
+            alert('lol!');
+        });
+    </script>
+    </body>
+</html>
