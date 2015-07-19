@@ -16,14 +16,16 @@ class DullCache extends EventEmitter
     R.forEach(emitExpired)(R.toPairs(R.pickBy(isExpired, @entries)))
     @entries = R.pickBy(R.complement(isExpired), @entries)
   set: (key, value, ttl) ->
-    ttl = ttl || @stdTTL
+    timeToLive = ttl || @stdTTL
     @entries[key] =
-      expiresAt: Date.now() + ttl
+      expiresAt: Date.now() + timeToLive
       value: value
+    @entries[key].ttl = ttl if ttl
   get: (key) ->
     val = @entries[key]
     if val?
-      val.expiresAt = Date.now() + @stdTTL
+      timeToLive = if @entries[key].ttl then @entries[key].ttl else @stdTTL
+      val.expiresAt = Date.now() + timeToLive
       val.value
     else
       undefined

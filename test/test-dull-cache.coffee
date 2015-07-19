@@ -51,3 +51,9 @@ describe 'Dull cache test suit', ->
       cache.ttl 'foo', 8000
       clock.tick 7800
       expect(cache.get('foo')).to.eql('bar')
+    it 'should be able to preserve ttl which was applied via "set" method', ->
+      cache.set 'foo', 'bar', 10000
+      clock.tick 9800
+      expect(cache.get('foo')).to.eql('bar')
+      clock.tick 9800
+      expect(cache.get('foo')).to.eql('bar')
