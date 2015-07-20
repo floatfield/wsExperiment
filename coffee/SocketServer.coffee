@@ -28,6 +28,7 @@ class SocketServer
 
   onConnect: (socket) =>
     socket.on 'token', @getTokenHandler(socket)
+    socket.on 'disconnect', @getDisconnectHandler(socket)
 
   getTokenHandler: (socket) =>
     (credentials) =>
@@ -40,5 +41,10 @@ class SocketServer
         @sendPendingMessages userId
       else
         @cache.del(userId)
+
+    getDisconnectHandler: (socket) =>
+      () =>
+        console.log 'do smth'
+        # delete(socket)
 
 module.exports = SocketServer

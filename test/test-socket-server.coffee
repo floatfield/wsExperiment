@@ -87,3 +87,33 @@ describe 'Socket server test suite', ->
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
       socketClient.on 'message', onMessage
+
+    it 'should remove socket object from cache on disconnect', (done) ->
+      validateCache = ->
+        expect(cache.get(2).socket).not.to.exist
+        done()
+      onConnect = ->
+        @emit 'token', {userId: 2, token: 'token'}
+        clock.tick 20
+        @disconnect()
+        clock.tick 20
+        validateCache()
+      socketServer.setUserToken 2, 'token'
+      socketClient = getSocketClient port
+      socketClient.on 'connect', onConnect
+
+    it 'should accept callback to persist expired user data', (done) ->
+      expireCallback = (userId, userData)->
+        console.log 'do smth'
+        # done()
+      onConnect = ->
+        @emit 'token', {userId: 13, token: 'user token 13'}
+        clock.tick 20
+        @disconnect()
+        clock.tick 20
+        expect(@cache.get(13).socket).not.to.exist
+        done()
+      # good path user disconnected and never came back
+      socketServer.setUserToken 13, 'user token 13'
+      socketClient1 = getSocketClient port
+      socketClient1.on 'connect', onConnect
