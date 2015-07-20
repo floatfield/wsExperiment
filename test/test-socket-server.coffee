@@ -18,7 +18,6 @@ describe 'Socket server test suite', ->
   port = 9090
   cache = new NodeCache
     stdTTL: 500
-    checkPeriod: 600
 
   beforeEach () ->
     socketServer = new SocketServer
@@ -30,6 +29,7 @@ describe 'Socket server test suite', ->
     clock.restore()
 
   describe 'Socket Server ', ->
+
     it 'should be able to be created', ->
       expect(socketServer).to.be.an('object')
 
@@ -46,16 +46,36 @@ describe 'Socket server test suite', ->
     it 'should populate applied cache with received user credentials', ->
       socketServer.setUserToken 12, 'some token'
       expect(cache.get(12)).to.exist
+      clock.tick 510
+      expect(cache.get(12)).not.to.exist
 
     it 'should remove user record from cache when wrong token from client received', (done) ->
       validateCache = ->
-        clock.tick 10
         expect(cache.get(15)).not.to.exist
         done()
       onConnect = ->
-        this.emit 'token', {userId: 15, token: 'another token'}
-        validateCache()
+        @emit 'token', {userId: 15, token: 'another token'}
       socketServer.setUserToken 15, 'some token'
       expect(cache.get(15)).to.exist
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
+      done()
+      clock.restore()
+      setTimeout validateCache, 100
+
+    it 'should send messages to connected users or store them in cache', (done) ->
+      onConnect = ->
+        @emit 'token', {userId: 18, token: 'a user token'}
+      onMessage = (message) ->
+        expect(message).to.eql({text: 'some message goes here', url: 'some/url/here'})
+        expect(cache.get(18)).to.eql
+          token: 'a user token'
+          messages: []
+      socketServer.setUserToken 18, 'a user token'
+      socketServer.sendMessage 18, {text: 'some message goes here', url: 'some/url/here'}
+      expect(cache.get(18)).to.eql
+        token: 'a user token'
+        messages: [{text: 'some message goes here', url: 'some/url/here'}]
+      socketClient = getSocketClient port
+      socketClient.on 'connect', onConnect
+      socketClient.on 'message', onMessage

@@ -8,14 +8,17 @@ class SocketServer
   setUserToken: (userId, token) ->
     @cache.set userId, {token: token}
 
-  onConnect: (socket) =>
-    socket.on 'token', @onToken
+  sendMessage: (userId, message) ->
+    console.log 'do the stuff'
 
-  onToken: (credentials) =>
-    userId = credentials.userId
-    cachedToken = @cache.get(userId).token
-    token = credentials.token
-    @cache.del(userId) unless cachedToken == token
-    console.log 'cahce keys: ', @cache.keys()
+  onConnect: (socket) =>
+    socket.on 'token', @getTokenHandler(socket)
+
+  getTokenHandler: (socket) =>
+    (credentials) =>
+      userId = credentials.userId
+      cachedToken = @cache.get(userId).token
+      token = credentials.token
+      @cache.del(userId) unless cachedToken == token
 
 module.exports = SocketServer

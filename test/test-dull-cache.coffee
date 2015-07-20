@@ -15,7 +15,7 @@ describe 'Dull cache test suit', ->
     clock.restore()
 
   beforeEach () ->
-    cache = new DullCache({stdTTL: 3000, checkPeriod: 4000})
+    cache = new DullCache({stdTTL: 3000})
 
   describe 'Dull cache', ->
     it 'should be able to store values by keys and delete them', ->

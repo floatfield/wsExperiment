@@ -5,25 +5,19 @@ class DullCache extends EventEmitter
 
   constructor: (config) ->
     @stdTTL = config.stdTTL || 3000
-    @checkPeriod = config.checkPeriod || 4000
     @entries = {}
-    setInterval @checkExpired, @checkPeriod
 
-  checkExpired: =>
-    isExpired = (v) ->
-      v.expiresAt <= now
-    emitExpired = (pair) =>
-      @emit 'expire', pair[0], pair[1].value
-    now = Date.now()
-    R.forEach(emitExpired)(R.toPairs(R.pickBy(isExpired, @entries)))
-    @entries = R.pickBy(R.complement(isExpired), @entries)
+  getExpireCallback: (key, value) ->
+    @emit 'expire', key, value
+    () =>
+      @del key
 
   set: (key, value, ttl) ->
     key = String(key)
     timeToLive = ttl || @stdTTL
     @entries[key] =
-      expiresAt: Date.now() + timeToLive
       value: value
+      timeout: setTimeout @getExpireCallback(key, value), timeToLive
     @entries[key].ttl = ttl if ttl
 
   get: (key) ->
@@ -31,7 +25,8 @@ class DullCache extends EventEmitter
     val = @entries[key]
     if val?
       timeToLive = if @entries[key].ttl then @entries[key].ttl else @stdTTL
-      val.expiresAt = Date.now() + timeToLive
+      clearTimeout val.timeout
+      val.timeout = setTimeout @getExpireCallback(key, val.value), timeToLive
       val.value
     else
       undefined
@@ -41,10 +36,15 @@ class DullCache extends EventEmitter
 
   del: (key) ->
     key = String(key)
+    clearTimeout(@entries[key].timeout) if @entries[key]
     @entries = R.dissoc key, @entries
 
   ttl: (key, ttl) ->
     key = String(key)
-    @entries[key].expiresAt = Date.now() + ttl
+    val = @entries[key]
+    if val?
+      clearTimeout val.timeout
+      val.timeout = setTimeout @getExpireCallback(key, val.value), ttl
+
 
 module.exports = DullCache
