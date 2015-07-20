@@ -4,6 +4,7 @@ expect = chai.expect
 NodeCache = require '../lib/dull-cache'
 SocketServer = require '../lib/SocketServer.js'
 sinon = require 'sinon'
+R = require 'ramda'
 
 getSocketClient = (port) ->
   require('socket.io-client')('ws://localhost:' + port, {
@@ -63,17 +64,24 @@ describe 'Socket server test suite', ->
       clock.restore()
       setTimeout validateCache, 100
 
+    it 'should be able to report whether the user is online / or was online recently', ->
+      socketServer.setUserToken 34, 'user token'
+      expect(socketServer.isUserOnline(34)).to.be.true
+
     it 'should send messages to connected users or store them in cache', (done) ->
       onConnect = ->
         @emit 'token', {userId: 18, token: 'a user token'}
       onMessage = (message) ->
         expect(message).to.eql({text: 'some message goes here', url: 'some/url/here'})
-        expect(cache.get(18)).to.eql
+        expect(R.pick(['token', 'messages'], cache.get(18))).to.eql
           token: 'a user token'
           messages: []
+        done()
       socketServer.setUserToken 18, 'a user token'
       socketServer.sendMessage 18, {text: 'some message goes here', url: 'some/url/here'}
-      expect(cache.get(18)).to.eql
+      socketServer.sendMessage 23, {text: 'another message here', url: 'another/path/here'}
+      expect(cache.get(23)).not.to.exist
+      expect(R.pick(['token', 'messages'], cache.get(18))).to.eql
         token: 'a user token'
         messages: [{text: 'some message goes here', url: 'some/url/here'}]
       socketClient = getSocketClient port
