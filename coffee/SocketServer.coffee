@@ -68,7 +68,9 @@ class SocketServer
   setExpireCallback: (fn) ->
     @cache.removeAllListeners('expire')
     @cache.on 'expire', (key, value) ->
-      fn(key, R.dissoc('token', value))
+      delete value.messages if value.messages.length == 0
+      delete value.componentRequestCount if value.componentRequestCount == 0
+      fn(key, R.dissoc('token', value)) if value.messages or value.componentRequestCount
 
   setPopulateCallback: (fn) =>
     @getUserData = fn

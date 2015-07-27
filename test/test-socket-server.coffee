@@ -1,5 +1,4 @@
 chai = require 'chai'
-spies = require 'chai-spies'
 expect = chai.expect
 NodeCache = require '../lib/dull-cache'
 SocketServer = require '../lib/SocketServer.js'
@@ -11,8 +10,6 @@ getSocketClient = (port) ->
   require('socket.io-client')('ws://localhost:' + port, {
     'force new connection': true
     })
-
-chai.use spies
 
 describe 'Socket server test suite', ->
   socketServer = {}
@@ -94,7 +91,6 @@ describe 'Socket server test suite', ->
         expect(userId).to.eql('12')
         expect(userData).to.eql
           messages: [{text: 'some text', url: 'some/path'}, {text: 'another text', url: 'another/path'}]
-          componentRequestCount: 0
         done()
       socketServer.setExpireCallback onExpire
       socketServer.setUserToken 12, 'a token'
@@ -142,7 +138,6 @@ describe 'Socket server test suite', ->
         if userId == '25'
           expect(userData).to.eql
             messages: [{text: 'some text', url: 'some/path/goes/here'}]
-            componentRequestCount: 0
           done()
       onConnect = ->
         @emit 'token', {userId: 25, token: 'wrong token'}
@@ -158,7 +153,6 @@ describe 'Socket server test suite', ->
         if userId == '26'
           expect(userData).to.eql
             messages: [{text: 'some text', url: 'some/path/goes/here'}]
-            componentRequestCount: 0
           done()
       socketServer.setExpireCallback onExpire
       socketServer.sendMessage 26, {text: 'some text', url: 'some/path/goes/here'}
@@ -169,7 +163,6 @@ describe 'Socket server test suite', ->
         if userId == '27'
           expect(userData).to.eql
             messages: [{text: 'text 27 times', url: 'some/27/goes/here'}]
-            componentRequestCount: 0
           done()
       getUserData = (userId) ->
         userObjects =
@@ -223,3 +216,20 @@ describe 'Socket server test suite', ->
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
       socketClient.on 'componentRequest', onComponentRequest
+
+    it 'should not persist empty messages and component request counts', (done) ->
+      onExpire = (userId, userData) -> return
+      onConnect = ->
+        @emit 'token', {userId: 29, token: 'some token'}
+      clock.restore()
+      expireSpy = sinon.spy(onExpire)
+      socketServer.setExpireCallback expireSpy
+      socketServer.setUserToken 29, 'some token'
+      socketServer.sendMessage 29, {text: 'some text', path: 'some/path'}
+      socketServer.sendComponentRequestCount 29, 10
+      socketClient = getSocketClient port
+      socketClient.on 'connect', onConnect
+      setTimeout(( ->
+        expect(expireSpy.withArgs('29').callCount).to.eql(0)
+        done()
+        ), 600)
