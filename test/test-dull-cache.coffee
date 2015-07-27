@@ -46,6 +46,17 @@ describe 'Dull cache test suit', ->
       cache.on 'expire', onExpire
       cache.set 'foo', 'bar'
       clock.tick 4000
+    it 'should call supplied callback not earlier than element will expire', ->
+      onExpire = (key, value) ->
+        expect(key).to.eql('foo')
+        expect(value).to.eql('bar')
+      expireSpy = sinon.spy(onExpire)
+      cache.on 'expire', expireSpy
+      cache.set 'foo', 'bar'
+      clock.tick 2500
+      expect(expireSpy.called).to.be.false
+      clock.tick 1000
+      expect(expireSpy.calledOnce).to.be.true
     it 'should be able to set TTL for an entry', ->
       cache.set 'foo', 'bar'
       cache.ttl 'foo', 8000

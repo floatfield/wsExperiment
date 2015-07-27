@@ -8,8 +8,8 @@ class DullCache extends EventEmitter
     @entries = {}
 
   getExpireCallback: (key, value) ->
-    @emit 'expire', key, value
     () =>
+      @emit 'expire', key, value
       @del key
 
   set: (key, value, ttl) ->

@@ -5,6 +5,7 @@ NodeCache = require '../lib/dull-cache'
 SocketServer = require '../lib/SocketServer.js'
 sinon = require 'sinon'
 R = require 'ramda'
+Promise = require 'promise'
 
 getSocketClient = (port) ->
   require('socket.io-client')('ws://localhost:' + port, {
@@ -29,7 +30,7 @@ describe 'Socket server test suite', ->
   afterEach () ->
     clock.restore()
 
-  describe 'Socket Server ', ->
+  describe 'Socket Server', ->
 
     it 'should be able to be created', ->
       expect(socketServer).to.be.an('object')
@@ -60,7 +61,6 @@ describe 'Socket server test suite', ->
       expect(cache.get(15)).to.exist
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
-      done()
       clock.restore()
       setTimeout validateCache, 100
 
@@ -80,7 +80,8 @@ describe 'Socket server test suite', ->
       socketServer.setUserToken 18, 'a user token'
       socketServer.sendMessage 18, {text: 'some message goes here', url: 'some/url/here'}
       socketServer.sendMessage 23, {text: 'another message here', url: 'another/path/here'}
-      expect(cache.get(23)).not.to.exist
+      expect(R.pick(['token', 'messages'], cache.get(23))).to.eql
+        messages: [{text: 'another message here', url: 'another/path/here'}]
       expect(R.pick(['token', 'messages'], cache.get(18))).to.eql
         token: 'a user token'
         messages: [{text: 'some message goes here', url: 'some/url/here'}]
@@ -88,32 +89,137 @@ describe 'Socket server test suite', ->
       socketClient.on 'connect', onConnect
       socketClient.on 'message', onMessage
 
-    it 'should remove socket object from cache on disconnect', (done) ->
-      validateCache = ->
-        expect(cache.get(2).socket).not.to.exist
+    it 'should accept callback to persist expired user data', (done) ->
+      onExpire = (userId, userData) ->
+        expect(userId).to.eql('12')
+        expect(userData).to.eql
+          messages: [{text: 'some text', url: 'some/path'}, {text: 'another text', url: 'another/path'}]
+          componentRequestCount: 0
         done()
+      socketServer.setExpireCallback onExpire
+      socketServer.setUserToken 12, 'a token'
+      socketServer.sendMessage 12, {text: 'some text', url: 'some/path'}
+      socketServer.sendMessage 12, {text: 'another text', url: 'another/path'}
+      expect(R.pick(['token', 'messages'],cache.get(12))).to.eql
+        token: 'a token'
+        messages: [{text: 'some text', url: 'some/path'}, {text: 'another text', url: 'another/path'}]
+      clock.tick 500
+
+    it 'should populate user object on token event using supplied callback', (done) ->
+      clock.restore()
+      userObjects =
+        '21':
+          messages: [{text: 'some text', path: 'some/path'}]
+        '22':
+          messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
+      getUserData = (userId) ->
+        new Promise((resolve, reject) ->
+          resolve(userObjects[String(userId)])
+          )
       onConnect = ->
-        @emit 'token', {userId: 2, token: 'token'}
-        clock.tick 20
-        @disconnect()
-        clock.tick 20
-        validateCache()
-      socketServer.setUserToken 2, 'token'
+        expect(R.pick(['token', 'messages'],cache.get(21))).to.eql
+          token: 'some token'
+          messages: [{text: 'some text', path: 'some/path'}]
+        @emit 'token', {userId: 21, token: 'some token'}
+      onMessage = (message) ->
+        expect(message).to.eql({text: 'some text', path: 'some/path'})
+      validateCache = ->
+        expect(R.pick(['token', 'messages'], cache.get(22))).to.eql
+          token: 'another token'
+          messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
+        done()
+      socketServer.setPopulateCallback(getUserData)
+      socketServer.setUserToken 21, 'some token'
+      socketServer.setUserToken 22, 'another token'
+      socketClient = getSocketClient port
+      socketClient.on 'connect', onConnect
+      socketClient.on 'message', onMessage
+      setTimeout validateCache, 150
+
+    it 'should persist all pending messages if client sent wrong token', (done) ->
+      clock.restore()
+      onExpire = (userId, userData) ->
+        if userId == '25'
+          expect(userData).to.eql
+            messages: [{text: 'some text', url: 'some/path/goes/here'}]
+            componentRequestCount: 0
+          done()
+      onConnect = ->
+        @emit 'token', {userId: 25, token: 'wrong token'}
+      socketServer.setExpireCallback onExpire
+      socketServer.setUserToken 25, 'a token'
+      socketServer.sendMessage 25, {text: 'some text', url: 'some/path/goes/here'}
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
 
-    it 'should accept callback to persist expired user data', (done) ->
-      expireCallback = (userId, userData)->
-        console.log 'do smth'
-        # done()
+    it 'should persist incoming messages if user is not online', (done) ->
+      clock.restore()
+      onExpire = (userId, userData) ->
+        if userId == '26'
+          expect(userData).to.eql
+            messages: [{text: 'some text', url: 'some/path/goes/here'}]
+            componentRequestCount: 0
+          done()
+      socketServer.setExpireCallback onExpire
+      socketServer.sendMessage 26, {text: 'some text', url: 'some/path/goes/here'}
+
+    it 'should be able to pass callbacks via constrctor config parameter', (done) ->
+      clock.restore()
+      onExpire = (userId, userData) ->
+        if userId == '27'
+          expect(userData).to.eql
+            messages: [{text: 'text 27 times', url: 'some/27/goes/here'}]
+            componentRequestCount: 0
+          done()
+      getUserData = (userId) ->
+        userObjects =
+          '27':
+            messages: [{text: 'text 27 times', url: 'some/27/goes/here'}]
+          '22':
+            messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
+        new Promise((resolve, reject) ->
+          resolve(userObjects[String(userId)])
+          )
       onConnect = ->
-        @emit 'token', {userId: 13, token: 'user token 13'}
-        clock.tick 20
-        @disconnect()
-        clock.tick 20
-        expect(@cache.get(13).socket).not.to.exist
-        done()
-      # good path user disconnected and never came back
-      socketServer.setUserToken 13, 'user token 13'
-      socketClient1 = getSocketClient port
-      socketClient1.on 'connect', onConnect
+        @emit 'token', {userId: 27, token: 'wrong token'}
+      someNewCache = new NodeCache
+        stdTTL: 500
+      someNewServer = new SocketServer
+        port: ++port
+        cache: someNewCache
+        onExpire: onExpire
+        getUserData: getUserData
+      someClient = getSocketClient port
+      someNewServer.setUserToken 27, 'a token'
+      someClient.on 'connect', onConnect
+
+    it 'should be able to deliver new component requests count', (done) ->
+      clock.restore()
+      getUserData = (userId) ->
+        userObjects =
+          '28':
+            componentRequestCount: 10
+          '30':
+            messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
+            componentRequestCount: 15
+        new Promise((resolve, reject) ->
+          resolve(userObjects[String(userId)])
+          )
+      onExpire = (userId, userData) ->
+        if userId == '30'
+          expect(userData).to.eql
+            messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
+            componentRequestCount: 30
+          done()
+      onConnect = ->
+        @emit 'token', {userId: 28, token: 'token28'}
+      onComponentRequest = (componentRequestCount) ->
+        expect(componentRequestCount).to.eql(10)
+      socketServer.setExpireCallback onExpire
+      socketServer.setPopulateCallback getUserData
+      socketServer.setUserToken 28, 'token28'
+      socketServer.setUserToken 30, 'token30'
+      socketServer.sendComponentRequestCount 30, 15
+      socketClient = getSocketClient port
+      socketClient.on 'connect', onConnect
+      socketClient.on 'componentRequest', onComponentRequest
