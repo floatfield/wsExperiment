@@ -1,0 +1,9 @@
+{
+  "_id": "_design/user_data",
+  "language": "javascript",
+  "views": {
+    "new_data": {
+      "map": "function(doc){if(doc.new){emit(doc.userId, doc);}}"
+    }
+  }
+}

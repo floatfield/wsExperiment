@@ -1,7 +1,7 @@
 chai = require 'chai'
 expect = chai.expect
 NodeCache = require '../lib/dull-cache'
-SocketServer = require '../lib/SocketServer.js'
+SocketServer = require '../lib/SocketServer'
 sinon = require 'sinon'
 R = require 'ramda'
 Promise = require 'promise'

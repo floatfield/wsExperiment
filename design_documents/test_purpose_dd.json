@@ -1,0 +1,9 @@
+{
+  "_id": "_design/test_dd",
+  "language": "javascript",
+  "views": {
+    "test": {
+      "map": "function(doc){emit(doc,null);}}"
+    }
+  }
+}

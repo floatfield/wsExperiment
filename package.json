@@ -12,6 +12,7 @@
     "body-parser": "^1.13.2",
     "coffee-script": "^1.9.3",
     "collections": "^1.2.3",
+    "cradle": "^0.6.9",
     "express": "^4.13.1",
     "mustache": "^2.1.2",
     "node-cache": "^3.0.0",
