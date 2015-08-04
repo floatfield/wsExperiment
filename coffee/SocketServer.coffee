@@ -10,7 +10,7 @@ class SocketServer
     @setExpireCallback config.onExpire if config.onExpire
 
   setUserToken: (userId, token) ->
-    if !@cache.get(userId)
+    if not @cache.get(userId)
       @cache.set userId, {token: token, messages: [], componentRequestCount: 0}
       if @getUserData
         @getUserData(userId).then((persistedUserData) => @addInfoChunk userId, persistedUserData)
