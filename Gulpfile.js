@@ -29,3 +29,11 @@ gulp.task('coffee', function() {
 gulp.task('mocha-watch', function() {
   gulp.watch(['test/**', 'coffee/**'], ['mocha']);
 });
+
+gulp.task('coffee-test', function(){
+  return gulp.src('test/*.coffee')
+    .pipe(coffee({
+      bare: true
+    }).on('error', gutil.log))
+    .pipe(gulp.dest('test_js/'));
+});

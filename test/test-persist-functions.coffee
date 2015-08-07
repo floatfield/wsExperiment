@@ -112,3 +112,25 @@ describe 'User data persist/populate test suite', ->
         expect(err).to.be.null
       .finally ->
         done()
+
+    it 'should be able to get all the user data', (done) ->
+      userData1 =
+        messages: [{text: 'message1', path: 'some/path'}]
+      userData2 =
+        messages: [{text: 'message2', path: 'another/path'}]
+        componentRequestCount: 2
+      userData3 =
+        componentRequestCount: 4
+      userData4 =
+        messages: [{text: 'message3', path: 'some/path3'}]
+      storage.persist '23', userData1
+      .then ->
+        storage.persist '23', userData2
+      .then ->
+        storage.persist '3', userData3
+      .then ->
+        storage.persist '31', userData4
+      .then ->
+        storage.getAllUserData()
+      .then (allData) ->
+        expect(allData).to.eql

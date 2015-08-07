@@ -93,4 +93,7 @@ class Storage
     .then ->
       userData
 
+  getAllUserData: ->
+    undefined
+
 module.exports = Storage
