@@ -18,19 +18,14 @@ html(lang="en")
                             = "Уведомление"
                         #sub-nav-cell-right.sub-nav-cell
                 #content.page_container
-                    if correspondences.length > 0
+                    if messages && messages.length > 0
                         div
                             h1 Новые сообщения!
-                            ul
-                                each corr in correspondences
-                                    li #{corr.count} сообщений по запросу #{corr.name}
-                    if requests.length > 0
+                            div У вас #{messages.length} новых сообщений
+                    if componentRequests && componentRequests.length > 0
                         div
                             h1 Новые запросы!
-                            ul
-                                each tuple in requests
-                                    li
-                                        a(href="#{tuple.link}") #{tuple.name}
+                            div У вас #{componentRequests.length} новых запросов по вашим фильтрам
         #page-bottom
             #footer.page_container
                 .footer-row

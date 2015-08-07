@@ -43,43 +43,45 @@ describe 'Socket server test suite', ->
       socketClient2.on 'connect', onConnect
 
     it 'should populate applied cache with received user credentials', ->
-      socketServer.setUserToken 12, 'some token'
-      expect(cache.get(12)).to.exist
+      socketServer.setUserToken 'some@example.org', 'some token'
+      expect(cache.get('some@example.org')).to.exist
       clock.tick 510
-      expect(cache.get(12)).not.to.exist
+      expect(cache.get('some@example.org')).not.to.exist
 
     it 'should remove user record from cache when wrong token from client received', (done) ->
       validateCache = ->
-        expect(cache.get(15)).not.to.exist
+        expect(cache.get('some@example.org')).not.to.exist
         done()
       onConnect = ->
-        @emit 'token', {userId: 15, token: 'another token'}
-      socketServer.setUserToken 15, 'some token'
-      expect(cache.get(15)).to.exist
+        @emit 'token', {email: 'some@example.org', token: 'another token'}
+      socketServer.setUserToken 'some@example.org', 'some token'
+      expect(cache.get('some@example.org')).to.exist
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
       clock.restore()
       setTimeout validateCache, 100
 
     it 'should be able to report whether the user is online / or was online recently', ->
-      socketServer.setUserToken 34, 'user token'
-      expect(socketServer.isUserOnline(34)).to.be.true
+      socketServer.setUserToken 'some@example.org', 'user token'
+      expect(socketServer.isUserOnline('some@example.org')).to.be.true
 
     it 'should send messages to connected users or store them in cache', (done) ->
+      email1 = 'some@example.org'
+      email2 = 'some1@example.org'
       onConnect = ->
-        @emit 'token', {userId: 18, token: 'a user token'}
+        @emit 'token', {email: email1, token: 'a user token'}
       onMessage = (message) ->
         expect(message).to.eql({text: 'some message goes here', url: 'some/url/here'})
-        expect(R.pick(['token', 'messages'], cache.get(18))).to.eql
+        expect(R.pick(['token', 'messages'], cache.get(email1))).to.eql
           token: 'a user token'
           messages: []
         done()
-      socketServer.setUserToken 18, 'a user token'
-      socketServer.sendMessage 18, {text: 'some message goes here', url: 'some/url/here'}
-      socketServer.sendMessage 23, {text: 'another message here', url: 'another/path/here'}
-      expect(R.pick(['token', 'messages'], cache.get(23))).to.eql
+      socketServer.setUserToken email1, 'a user token'
+      socketServer.sendMessage email1, {text: 'some message goes here', url: 'some/url/here'}
+      socketServer.sendMessage email2, {text: 'another message here', url: 'another/path/here'}
+      expect(R.pick(['token', 'messages'], cache.get(email2))).to.eql
         messages: [{text: 'another message here', url: 'another/path/here'}]
-      expect(R.pick(['token', 'messages'], cache.get(18))).to.eql
+      expect(R.pick(['token', 'messages'], cache.get(email1))).to.eql
         token: 'a user token'
         messages: [{text: 'some message goes here', url: 'some/url/here'}]
       socketClient = getSocketClient port
@@ -87,46 +89,49 @@ describe 'Socket server test suite', ->
       socketClient.on 'message', onMessage
 
     it 'should accept callback to persist expired user data', (done) ->
-      onExpire = (userId, userData) ->
-        expect(userId).to.eql('12')
+      email1 = 'some12@example.org'
+      onExpire = (email, userData) ->
+        expect(email).to.eql(email1)
         expect(userData).to.eql
           messages: [{text: 'some text', url: 'some/path'}, {text: 'another text', url: 'another/path'}]
         done()
       socketServer.setExpireCallback onExpire
-      socketServer.setUserToken 12, 'a token'
-      socketServer.sendMessage 12, {text: 'some text', url: 'some/path'}
-      socketServer.sendMessage 12, {text: 'another text', url: 'another/path'}
-      expect(R.pick(['token', 'messages'],cache.get(12))).to.eql
+      socketServer.setUserToken email1, 'a token'
+      socketServer.sendMessage email1, {text: 'some text', url: 'some/path'}
+      socketServer.sendMessage email1, {text: 'another text', url: 'another/path'}
+      expect(R.pick(['token', 'messages'],cache.get(email1))).to.eql
         token: 'a token'
         messages: [{text: 'some text', url: 'some/path'}, {text: 'another text', url: 'another/path'}]
       clock.tick 500
 
     it 'should populate user object on token event using supplied callback', (done) ->
       clock.restore()
+      email1 = 'some21@example.org'
+      email2 = 'some22@example.org'
       userObjects =
-        '21':
+        'some21@example.org':
           messages: [{text: 'some text', path: 'some/path'}]
-        '22':
+        'some22@example.org':
           messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
-      getUserData = (userId) ->
+      getUserData = (email) ->
         new Promise((resolve, reject) ->
-          resolve(userObjects[String(userId)])
+          resolve(userObjects[String(email)])
           )
       onConnect = ->
-        expect(R.pick(['token', 'messages'],cache.get(21))).to.eql
+        expect(R.pick(['token', 'messages'],cache.get(email1))).to.eql
           token: 'some token'
           messages: [{text: 'some text', path: 'some/path'}]
-        @emit 'token', {userId: 21, token: 'some token'}
+        @emit 'token', {email: email1, token: 'some token'}
       onMessage = (message) ->
         expect(message).to.eql({text: 'some text', path: 'some/path'})
       validateCache = ->
-        expect(R.pick(['token', 'messages'], cache.get(22))).to.eql
+        expect(R.pick(['token', 'messages'], cache.get(email2))).to.eql
           token: 'another token'
           messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
         done()
       socketServer.setPopulateCallback(getUserData)
-      socketServer.setUserToken 21, 'some token'
-      socketServer.setUserToken 22, 'another token'
+      socketServer.setUserToken email1, 'some token'
+      socketServer.setUserToken email2, 'another token'
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
       socketClient.on 'message', onMessage
@@ -134,47 +139,50 @@ describe 'Socket server test suite', ->
 
     it 'should persist all pending messages if client sent wrong token', (done) ->
       clock.restore()
-      onExpire = (userId, userData) ->
-        if userId == '25'
+      email1 = 'some25@example.org'
+      onExpire = (email, userData) ->
+        if email == email1
           expect(userData).to.eql
             messages: [{text: 'some text', url: 'some/path/goes/here'}]
           done()
       onConnect = ->
-        @emit 'token', {userId: 25, token: 'wrong token'}
+        @emit 'token', {email: email1, token: 'wrong token'}
       socketServer.setExpireCallback onExpire
-      socketServer.setUserToken 25, 'a token'
-      socketServer.sendMessage 25, {text: 'some text', url: 'some/path/goes/here'}
+      socketServer.setUserToken email1, 'a token'
+      socketServer.sendMessage email1, {text: 'some text', url: 'some/path/goes/here'}
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
 
     it 'should persist incoming messages if user is not online', (done) ->
       clock.restore()
-      onExpire = (userId, userData) ->
-        if userId == '26'
+      email1 = 'some26@example.org'
+      onExpire = (email, userData) ->
+        if email == email1
           expect(userData).to.eql
             messages: [{text: 'some text', url: 'some/path/goes/here'}]
           done()
       socketServer.setExpireCallback onExpire
-      socketServer.sendMessage 26, {text: 'some text', url: 'some/path/goes/here'}
+      socketServer.sendMessage email1, {text: 'some text', url: 'some/path/goes/here'}
 
     it 'should be able to pass callbacks via constrctor config parameter', (done) ->
       clock.restore()
-      onExpire = (userId, userData) ->
-        if userId == '27'
+      email1 = 'some27@example.org'
+      onExpire = (email, userData) ->
+        if email == email1
           expect(userData).to.eql
             messages: [{text: 'text 27 times', url: 'some/27/goes/here'}]
           done()
-      getUserData = (userId) ->
+      getUserData = (email) ->
         userObjects =
-          '27':
+          'some27@example.org':
             messages: [{text: 'text 27 times', url: 'some/27/goes/here'}]
-          '22':
+          'some22@example.org':
             messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
         new Promise((resolve, reject) ->
-          resolve(userObjects[String(userId)])
+          resolve(userObjects[String(email)])
           )
       onConnect = ->
-        @emit 'token', {userId: 27, token: 'wrong token'}
+        @emit 'token', {email: email1, token: 'wrong token'}
       someNewCache = new NodeCache
         stdTTL: 500
       someNewServer = new SocketServer
@@ -183,53 +191,56 @@ describe 'Socket server test suite', ->
         onExpire: onExpire
         getUserData: getUserData
       someClient = getSocketClient port
-      someNewServer.setUserToken 27, 'a token'
+      someNewServer.setUserToken email1, 'a token'
       someClient.on 'connect', onConnect
 
     it 'should be able to deliver new component requests count', (done) ->
       clock.restore()
+      email1 = 'some28@example.org'
+      email2 = 'some30@example.org'
       getUserData = (userId) ->
         userObjects =
-          '28':
-            componentRequestCount: 10
-          '30':
+          'some28@example.org':
+            componentRequestCount: [{data: 'data1'},{data: 'data2'},{data: 'data3'},{data: 'data4'}]
+          'some30@example.org':
             messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
-            componentRequestCount: 15
+            componentRequests: [{data: 'data1'},{data: 'data2'},{data: 'data3'}]
         new Promise((resolve, reject) ->
           resolve(userObjects[String(userId)])
           )
-      onExpire = (userId, userData) ->
-        if userId == '30'
+      onExpire = (email, userData) ->
+        if email == email2
           expect(userData).to.eql
             messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
-            componentRequestCount: 30
+            componentRequests: [{data: 'data1'},{data: 'data2'},{data: 'data3'},{data: 'data1'},{data: 'data2'},{data: 'data3'}]
           done()
       onConnect = ->
-        @emit 'token', {userId: 28, token: 'token28'}
+        @emit 'token', {email: email1, token: 'token28'}
       onComponentRequest = (componentRequestCount) ->
-        expect(componentRequestCount).to.eql(10)
+        expect(componentRequestCount).to.eql(4)
       socketServer.setExpireCallback onExpire
       socketServer.setPopulateCallback getUserData
-      socketServer.setUserToken 28, 'token28'
-      socketServer.setUserToken 30, 'token30'
-      socketServer.sendComponentRequestCount 30, 15
+      socketServer.setUserToken email1, 'token28'
+      socketServer.setUserToken email2, 'token30'
+      socketServer.sendComponentRequests email2, [{data: 'data1'},{data: 'data2'},{data: 'data3'}]
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
       socketClient.on 'componentRequest', onComponentRequest
 
     it 'should not persist empty messages and component request counts', (done) ->
-      onExpire = (userId, userData) -> return
+      email1 = 'some29@example.org'
+      onExpire = (email, userData) -> return
       onConnect = ->
-        @emit 'token', {userId: 29, token: 'some token'}
+        @emit 'token', {email: email1, token: 'some token'}
       clock.restore()
       expireSpy = sinon.spy(onExpire)
       socketServer.setExpireCallback expireSpy
-      socketServer.setUserToken 29, 'some token'
-      socketServer.sendMessage 29, {text: 'some text', path: 'some/path'}
-      socketServer.sendComponentRequestCount 29, 10
+      socketServer.setUserToken email1, 'some token'
+      socketServer.sendMessage email1, {text: 'some text', path: 'some/path'}
+      socketServer.sendComponentRequests email1, [{data: 'data'}]
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
       setTimeout(( ->
-        expect(expireSpy.withArgs('29').callCount).to.eql(0)
+        expect(expireSpy.withArgs(email1).callCount).to.eql(0)
         done()
         ), 600)

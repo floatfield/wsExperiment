@@ -34,6 +34,9 @@ describe 'User data persist/populate test suite', ->
         anotherStorage.exists()
       .then (exists) ->
         expect(exists).to.be.false
+      .catch (err) ->
+        throw err
+      .finally ->
         done()
 
     it 'should be able to create database with given name', (done) ->
@@ -42,11 +45,14 @@ describe 'User data persist/populate test suite', ->
         anotherDb.exists (err, yep) ->
           expect(err).to.be.null
           expect(yep).to.be.true
-          done()
       anotherStorage = new Storage('another-db-name-for-testing-purpose')
       anotherStorage.createDb()
       .then (res) ->
         checkDbExistance()
+      .catch (err) ->
+        throw err
+      .finally ->
+        done()
 
     it 'should be able to remove database with given name', (done) ->
       checkDbExistance = ->
@@ -54,52 +60,61 @@ describe 'User data persist/populate test suite', ->
         anotherDb.exists (err, yep) ->
           expect(err).to.be.null
           expect(yep).to.be.false
-          done()
       anotherStorage = new Storage('another-db-name-for-testing-purpose')
       anotherStorage.createDb()
       .then ->
         anotherStorage.destroyDb()
       .then ->
         checkDbExistance()
+      .catch (err) ->
+        throw err
+      .finally ->
+        done()
 
     it 'should be able to store a chunk of user data', (done) ->
       userData =
         messages: [{text: 'some text', path: 'some/path'}]
-      storage.persist('39', userData)
+      storage.persist('some@example.org', userData)
       .then (storedId) ->
         db.get storedId, (err, doc) ->
           expect(err).to.be.null
-          persistedObject = R.pick ['userId', 'new', 'messages'], doc
-          expectedObject = R.merge(userData, {new: true, userId: '39'})
+          persistedObject = R.pick ['email', 'new', 'messages'], doc
+          expectedObject = R.merge(userData, {new: true, email: 'some@example.org'})
           expect(persistedObject).to.eql(expectedObject)
-          done()
+      .catch (err) ->
+        throw err
+      .finally ->
+        done()
 
     it 'should be able to store design document', (done) ->
       storage.persistDesignDocument '../design_documents/test_purpose_dd.json', 'test'
       .then ->
         db.get '_design/test', (err, doc) ->
           expect(err).to.be.null
-          done()
+      .catch (err) ->
+        throw err
+      .finally ->
+        done()
 
     it 'should be able to get all new user data chunks and mark them as old', (done) ->
       userData1 =
         messages: [{text: 'message1', path: 'some/path'}]
       userData2 =
         messages: [{text: 'message2', path: 'another/path'}]
-        componentRequestCount: 2
+        componentRequests: [{someData: 'some data for component requeset'},{anotherData: 'another'}]
       storedIds = []
-      storage.persist '32', userData1
+      storage.persist 'some1@example.org', userData1
       .then (id) ->
         storedIds.push id
       .then ->
-        storage.persist '32', userData2
+        storage.persist 'some1@example.org', userData2
       .then (id)->
         storedIds.push id
-        storage.getUserData '32'
+        storage.getUserData 'some1@example.org'
       .then (userData) ->
         expect(userData).to.eql
           messages: R.concat userData1.messages, userData2.messages
-          componentRequestCount: 2
+          componentRequests: [{someData: 'some data for component requeset'},{anotherData: 'another'}]
         get storedIds
       .then (data) ->
         isAnyUnreadDoc = R.compose(
@@ -109,7 +124,21 @@ describe 'User data persist/populate test suite', ->
         )(data)
         expect(isAnyUnreadDoc).to.be.false
       .catch (err) ->
-        expect(err).to.be.null
+        throw err
+      .finally ->
+        done()
+
+    it 'should be able to store and find user data by email address', (done) ->
+      userData =
+        messages: [{text: 'message2', path: 'another/path'}]
+        componentRequests: [{data: 'some data'}]
+      storage.persist 'some@example.org', userData
+      .then (id) ->
+        storage.getUserData 'some@example.org'
+      .then (userData) ->
+        expect(userData).to.eql(userData)
+      .catch (err) ->
+        throw err
       .finally ->
         done()
 
@@ -118,19 +147,44 @@ describe 'User data persist/populate test suite', ->
         messages: [{text: 'message1', path: 'some/path'}]
       userData2 =
         messages: [{text: 'message2', path: 'another/path'}]
-        componentRequestCount: 2
+        componentRequests: [{data: 'data1'},{data: 'data2'},{data: 'data3'}]
       userData3 =
-        componentRequestCount: 4
+        componentRequests: [{data: 'data1'},{data: 'data2'},{data: 'data3'}]
       userData4 =
         messages: [{text: 'message3', path: 'some/path3'}]
-      storage.persist '23', userData1
+      userData5 =
+        messages: [{text: 'message11', path: 'some/path453'}]
+      storage.persist 'some11@example.org', userData1
       .then ->
-        storage.persist '23', userData2
+        storage.persist 'some12@example.org', userData2
       .then ->
-        storage.persist '3', userData3
+        storage.persist 'some13@example.org', userData3
       .then ->
-        storage.persist '31', userData4
+        storage.persist 'some13@example.org', userData4
+      .then ->
+        storage.persist 'some14@example.org', userData5
+      .then ->
+        storage.getUserData 'some14@example.org'
       .then ->
         storage.getAllUserData()
       .then (allData) ->
-        expect(allData).to.eql
+        expect(allData).to.eql([
+          {
+            email: 'some11@example.org'
+            messages: [{text: 'message1', path: 'some/path'}]
+          },
+          {
+            email: 'some12@example.org'
+            messages: [{text: 'message2', path: 'another/path'}]
+            componentRequests: [{data: 'data1'},{data: 'data2'},{data: 'data3'}]
+          },
+          {
+            email: 'some13@example.org'
+            messages: [{text: 'message3', path: 'some/path3'}]
+            componentRequests: [{data: 'data1'},{data: 'data2'},{data: 'data3'}]
+          }
+        ])
+      .catch (err) ->
+        throw err
+      .finally ->
+        done()

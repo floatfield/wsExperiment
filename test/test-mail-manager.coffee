@@ -11,6 +11,15 @@ Storage = require '../lib/storage'
 describe 'MailManager test suite', ->
 
   mailManager = {}
+  storage = new Storage('test-user-data-store')
+
+  before ->
+    storage.createDb()
+    .then ->
+      storage.persistDesignDocument '../design_documents/find_new_user_data.json', 'user_data'
+
+  after ->
+    storage.destroyDb()
 
   beforeEach ->
     stubTransport = require('nodemailer-stub-transport')
@@ -33,9 +42,9 @@ describe 'MailManager test suite', ->
         expect(res.envelope).to.eql
           to: ['some@example.org']
           from: 'jane.doe@example.org'
-        done()
       .catch (err) ->
-        expect(err).to.be.null
+        throw err
+      .finally ->
         done()
 
   describe '#sendPasswordRestorationLetter()', ->
@@ -48,9 +57,9 @@ describe 'MailManager test suite', ->
         expect(res.envelope).to.eql
           to: ['john.doe@example.org']
           from: 'jane.doe@example.org'
-        done()
       .catch (err) ->
-        expect(err).to.be.null
+        throw err
+      .finally ->
         done()
 
   describe '#sendUserNotificationLetter()', ->
@@ -63,9 +72,46 @@ describe 'MailManager test suite', ->
         expect(res.envelope).to.eql
           to: [email]
           from: 'jane.doe@example.org'
-        done()
       .catch (err) ->
-        expect(err).to.be.null
+        throw err
+      .finally ->
         done()
 
-  # describe '#notifyMailingList()'
+  describe '#notifyMailingList()', ->
+
+    it 'should be able to send all the new storage data to corresponding emails', (done) ->
+      mailManager.setStorage storage
+      emails = ['some111@example.org','some121@example.org','some131@example.org']
+      userData1 =
+        messages: [{text: 'message1', path: 'some/path'}]
+      userData2 =
+        messages: [{text: 'message2', path: 'another/path'}]
+        componentRequests: [{data: 'data1'},{data: 'data2'},{data: 'data3'}]
+      userData3 =
+        componentRequests: [{data: 'data1'},{data: 'data2'},{data: 'data3'}]
+      userData4 =
+        messages: [{text: 'message3', path: 'some/path3'}]
+      userData5 =
+        messages: [{text: 'message11', path: 'some/path453'}]
+      storage.persist 'some111@example.org', userData1
+      .then ->
+        storage.persist 'some121@example.org', userData2
+      .then ->
+        storage.persist 'some131@example.org', userData3
+      .then ->
+        storage.persist 'some131@example.org', userData4
+      .then ->
+        storage.persist 'some141@example.org', userData5
+      .then ->
+        storage.getUserData 'some141@example.org'
+      .then ->
+        mailManager.notifyMailingList()
+      .then (res) ->
+        R.forEach( (result) ->
+          expect(emails).to.include.members(result.envelope.to)
+          expect(result.envelope.from).to.eql('jane.doe@example.org')
+        )(res)
+      .catch (err) ->
+        throw err
+      .finally ->
+        done()

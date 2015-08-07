@@ -14,6 +14,8 @@ class MailManager
       subject: subject
       from: @sender
 
+  setStorage: (@storage) ->
+
   sendPasswordLetter: (email, password) ->
     config = @getTransporterConfig email, 'Пароль к вашей учетной записи'
     locals =
@@ -31,5 +33,12 @@ class MailManager
     locals =
       text: text
     @mailer.sendEmail 'user-notifications', config, locals
+
+  notifyMailingList: ->
+    config = R.dissoc('to', @getTransporterConfig('dummy', 'Новые сообщения'))
+    @storage.getAllUserData()
+    .bind @
+    .then (dataList) ->
+      @mailer.bulkSend 'new-messages', config, dataList
 
 module.exports = MailManager

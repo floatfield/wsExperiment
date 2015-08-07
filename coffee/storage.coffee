@@ -50,11 +50,11 @@ class Storage
     .catch (err) ->
       console.error 'error destroying database: ', err
 
-  persist: (userId, userData) ->
+  persist: (email, userData) ->
     post
       url: @url
       json: true
-      body: R.merge(userData, {new: true, userId: userId})
+      body: R.merge(userData, {new: true, email: email})
     .then (res) ->
       getBodyFromRes(res).id
     .catch (err) ->
@@ -74,16 +74,16 @@ class Storage
       console.error 'error persisting design document:'
       console.error err
 
-  getUserData: (userId) ->
+  getUserData: (email) ->
     userData = {}
-    get @url + '/_design/user_data/_view/new_data?key="' + userId + '"'
+    get @url + '/_design/user_data/_view/new_data?key="' + email + '"'
     .bind @
     .then (res) ->
       changed = R.compose(
         R.map(R.assoc('new', false)),
         R.pluck('value')
       )(getBodyFromRes(res).rows)
-      data = R.map(R.pick(['messages', 'componentRequestCount']))(changed)
+      data = R.map(R.pick(['messages', 'componentRequests']))(changed)
       userData = mergeAdd(data)
       post
         url: @url + '/_bulk_docs'
@@ -94,6 +94,19 @@ class Storage
       userData
 
   getAllUserData: ->
-    undefined
+    get @url + '/_design/user_data/_view/new_data'
+    .bind @
+    .then (res) ->
+      R.compose(
+        R.map(([email,data]) ->
+          data.email = email
+          data
+        ),
+        R.toPairs,
+        R.mapObj(R.compose(mergeAdd, R.map(R.dissoc('email')))),
+        R.groupBy(R.prop('email')),
+        R.map(R.pick(['email','messages','componentRequests'])),
+        R.pluck('value')
+      )(getBodyFromRes(res).rows)
 
 module.exports = Storage
