@@ -188,3 +188,39 @@ describe 'User data persist/populate test suite', ->
         throw err
       .finally ->
         done()
+
+    it 'should not return any data if there is no any', (done) ->
+      anotherStorage = new Storage('empty-database')
+      anotherStorage.createDb()
+      .then ->
+        anotherStorage.persistDesignDocument '../design_documents/find_new_user_data.json', 'test'
+      .then ->
+        anotherStorage.getAllUserData()
+      .then (data) ->
+        expect(data).to.be.empty
+      .then ->
+        anotherStorage.destroyDb()
+      .catch (err) ->
+        throw err
+      .finally ->
+        done()
+
+    it 'should not return any data if there is no new data', (done) ->
+      anotherStorage = new Storage('empty-database')
+      anotherStorage.createDb()
+      .then ->
+        anotherStorage.persistDesignDocument '../design_documents/find_new_user_data.json', 'test'
+      .then ->
+        anotherStorage.persist 'some_one@example.org', {data: 'lol'}
+      .then ->
+        anotherStorage.getUserData 'some_one@example.org'
+      .then ->
+        anotherStorage.getAllUserData()
+      .then (data) ->
+        expect(data).to.be.empty
+      .then ->
+        anotherStorage.destroyDb()
+      .catch (err) ->
+        throw err
+      .finally ->
+        done()

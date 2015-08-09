@@ -79,34 +79,52 @@ class Storage
     get @url + '/_design/user_data/_view/new_data?key="' + email + '"'
     .bind @
     .then (res) ->
-      changed = R.compose(
-        R.map(R.assoc('new', false)),
-        R.pluck('value')
-      )(getBodyFromRes(res).rows)
-      data = R.map(R.pick(['messages', 'componentRequests']))(changed)
-      userData = mergeAdd(data)
-      post
-        url: @url + '/_bulk_docs'
-        json: true
-        body:
-          docs: changed
+      getBodyFromRes res
+    .then (res) ->
+      if not res.rows
+        {}
+      else
+        changed = R.compose(
+          R.map(R.assoc('new', false)),
+          R.pluck('value')
+        )(res.rows)
+        data = R.map(R.pick(['messages', 'componentRequests']))(changed)
+        userData = mergeAdd(data)
+        post
+          url: @url + '/_bulk_docs'
+          json: true
+          body:
+            docs: changed
     .then ->
       userData
+    .catch (err) ->
+      console.error 'error reading user data for user: ', email
+      console.error err
+      throw err
 
   getAllUserData: ->
     get @url + '/_design/user_data/_view/new_data'
     .bind @
     .then (res) ->
-      R.compose(
-        R.map(([email,data]) ->
-          data.email = email
-          data
-        ),
-        R.toPairs,
-        R.mapObj(R.compose(mergeAdd, R.map(R.dissoc('email')))),
-        R.groupBy(R.prop('email')),
-        R.map(R.pick(['email','messages','componentRequests'])),
-        R.pluck('value')
-      )(getBodyFromRes(res).rows)
+      getBodyFromRes res
+    .then (res) ->
+      if not res.rows
+        []
+      else
+        R.compose(
+          R.map(([email,data]) ->
+            data.email = email
+            data
+          ),
+          R.toPairs,
+          R.mapObj(R.compose(mergeAdd, R.map(R.dissoc('email')))),
+          R.groupBy(R.prop('email')),
+          R.map(R.pick(['email','messages','componentRequests'])),
+          R.pluck('value')
+        )(res.rows)
+    .catch (err) ->
+      console.error 'error getting all user data:'
+      console.error err
+      throw err
 
 module.exports = Storage

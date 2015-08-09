@@ -1,26 +1,135 @@
-function getUniqueId(){
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-        return v.toString(16);
+var express = require('express'),
+  app = express(),
+  http = require('http'),
+  server = http.Server(app),
+  R = require('ramda'),
+  DullCache = require('./lib/dull-cache'),
+  SocketServer = require('./lib/SocketServer'),
+  Mailer = require('./lib/mailer'),
+  MailManager = require('./lib/mail-manager'),
+  Storage = require('./lib/storage'),
+  bodyParser = require('body-parser'),
+  util = require('./lib/util'),
+  nodemailer = require('nodemailer'),
+  smtpPool = require('nodemailer-smtp-pool'),
+  schedule = require('node-schedule'),
+  smtpConfig = {
+    port: 2525,
+    host: 'mail.used-part.ru'
+  },
+  transporter = nodemailer.createTransport(smtpPool(smtpConfig)),
+  dbName = util.generateDbName(),
+  storage = new Storage(dbName),
+  dullCache = new DullCache({
+    stdTTL: 15000
+  }),
+  socketServer = new SocketServer({
+    port: 8091,
+    cache: dullCache,
+    storage: storage
+  }),
+  mailer = new Mailer({
+    templatesDir: '../templates',
+    transporter: transporter
+  }),
+  mailManager = new MailManager({
+    mailer: mailer,
+    sender: 'Биржа запчастей <admin@used-part.ru>',
+    storage: storage,
+    debugRecipient: 'bromshveiger@gmail.com' // TODO: remove in production
+  });
+
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
+
+schedule.scheduleJob('0 1 * * *', function() {
+  var newStorage = new Storage(util.generateDbName());
+  newStorage.createDb()
+    .then(function() {
+      return newStorage.persistDesignDocument('../design_documents/find_new_user_data.json', 'user_data');
+    })
+    .then(function() {
+      socketServer.setStorage(newStorage);
+      return mailManager.notifyMailingList();
+    })
+    .then(function() {
+      mailManager.setStorage(newStorage);
+      return storage.destroyDb();
+    })
+    .then(function() {
+      storage = newStorage;
+    })
+    .catch(function(err) {
+      console.error('error scheduling stuff');
+      console.error(err);
     });
-}
+});
 
-function getRandomInt(min, max) {
-    return Math.floor(Math.random() * (max - min)) + min;
-}
+storage.createDb()
+  .then(function() {
+    return storage.persistDesignDocument('../design_documents/find_new_user_data.json', 'user_data');
+  })
+  .catch(function(err) {
+    console.error('error creating db');
+    console.error(err);
+  });
 
-var app = require('express')(),
-    server = require('http').Server(app),
-    io = require('socket.io')(server),
-    Rx = require('rx'),
-    Mustache = require('mustache'),
-    fs = require('fs'),
-    R = require('ramda'),
-    uniqueIds = R.map(function(){ return getUniqueId(); })(R.range(1,10)),
-    fastMap = require('collections/fast-map')();
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
+app.use(express.static('public'));
 
-server.listen(8085);
+server.listen(8090);
 
-app.get('/', function (req, res) {
-    res.send('lol!');
+app.post('/token', function(req, res) {
+  var email = req.body.email,
+    token = req.body.token;
+  socketServer.setUserToken(email, token);
+  res.send({
+    success: true
+  });
+});
+
+app.post('/message', function(req, res) {
+  var email = req.body.email,
+    message = JSON.parse(req.body.message),
+    correspondencePath = req.body.correspondencePath,
+    correspondenceId = req.body.correspondenceId;
+  socketServer.sendMessage(email, {
+    message: message,
+    link: correspondencePath,
+    correspondenceId: correspondenceId
+  });
+  res.send({
+    success: true
+  });
+});
+
+app.post('/request_notification', function(req, res) {
+  var email = req.body.email,
+    requests = R.values(JSON.parse(req.body.requests));
+  socketServer.sendComponentRequests(email, requests);
+  res.send({
+    success: true
+  });
+});
+
+app.post('/password_restore', function(req, res) {
+  mailManager.sendPasswordRestorationLetter(req.body.email, req.body.link);
+  res.send({
+    success: true
+  });
+});
+
+app.post('/password_email', function(req, res) {
+  mailManager.sendPasswordLetter(req.body.email, req.body.password);
+  res.send({
+    success: true
+  });
+});
+
+app.post('/user_notification', function(req, res) {
+  var emails = req.body.emails,
+    text = req.body.text;
+  mailManager.sendUserNotificationLetter(emails, text);
 });

@@ -5,17 +5,28 @@ class SocketServer
   constructor: (config) ->
     @server = require('socket.io')(config.port)
     @cache = config.cache
+    if config.storage
+      @storage = config.storage
+      @subscribeToCacheEvents()
     @server.on 'connection', @onConnect
-    @getUserData = config.getUserData if config.getUserData
-    @setExpireCallback config.onExpire if config.onExpire
 
   setUserToken: (email, token) ->
     if not @cache.get(email)
       @cache.set email, {token: token, messages: [], componentRequests: []}
-      if @getUserData
-        @getUserData(email).then((persistedUserData) => @addInfoChunk email, persistedUserData)
+      if @storage
+        @storage.getUserData(email).then((persistedUserData) => @addInfoChunk email, persistedUserData)
     else
       @cache.get(email).token = token
+
+  subscribeToCacheEvents: ->
+    @cache.removeAllListeners('expire')
+    @cache.on 'expire', (key, value) =>
+      if value.socket
+        @cache.set key, value
+      else
+        delete value.messages if value.messages.length == 0
+        delete value.componentRequests if value.componentRequests.length == 0
+        @storage.persist(key, R.dissoc('token', value)) if value.messages or value.componentRequests
 
   isUserOnline: (email) ->
     R.contains String(email), @cache.keys()
@@ -65,14 +76,7 @@ class SocketServer
       else
         @cache.ttl(email, 0)
 
-  setExpireCallback: (fn) ->
-    @cache.removeAllListeners('expire')
-    @cache.on 'expire', (key, value) ->
-      delete value.messages if value.messages.length == 0
-      delete value.componentRequests if value.componentRequests.length == 0
-      fn(key, R.dissoc('token', value)) if value.messages or value.componentRequests
-
-  setPopulateCallback: (fn) =>
-    @getUserData = fn
+  setStorage: (@storage) ->
+    @subscribeToCacheEvents()
 
 module.exports = SocketServer

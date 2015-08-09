@@ -6,11 +6,13 @@ class MailManager
   constructor: (config) ->
     @mailer = config.mailer
     @sender = config.sender
-    @dbName = config.dbName
+    @storage = config.storage || {}
+    if config.debugRecipient
+      @debugRecipient = config.debugRecipient
 
   getTransporterConfig: (email, subject) ->
     config =
-      to: email
+      to: @debugRecipient || email
       subject: subject
       from: @sender
 
@@ -39,6 +41,11 @@ class MailManager
     @storage.getAllUserData()
     .bind @
     .then (dataList) ->
+      if @debugRecipient
+        dataList = R.map((locals) =>
+          locals.email = @debugRecipient
+          locals
+        )(dataList)
       @mailer.bulkSend 'new-messages', config, dataList
 
 module.exports = MailManager

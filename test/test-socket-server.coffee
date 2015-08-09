@@ -5,6 +5,7 @@ SocketServer = require '../lib/SocketServer'
 sinon = require 'sinon'
 R = require 'ramda'
 Promise = require 'promise'
+Storage = require '../lib/storage'
 
 getSocketClient = (port) ->
   require('socket.io-client')('ws://localhost:' + port, {
@@ -17,15 +18,35 @@ describe 'Socket server test suite', ->
   port = 9090
   cache = new NodeCache
     stdTTL: 500
+  storage = {}
 
   beforeEach () ->
     socketServer = new SocketServer
       port: ++port
       cache: cache
     clock = sinon.useFakeTimers()
+    userObjects =
+      'some21@example.org':
+        messages: [{text: 'some text', path: 'some/path'}]
+      'some22@example.org':
+        messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
+      'some27@example.org':
+        messages: [{text: 'text 27 times', url: 'some/27/goes/here'}]
+      'some28@example.org':
+        componentRequestCount: [{data: 'data1'},{data: 'data2'},{data: 'data3'},{data: 'data4'}]
+      'some30@example.org':
+        messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
+        componentRequests: [{data: 'data1'},{data: 'data2'},{data: 'data3'}]
+    storage =
+      persist: (email, userData) ->
+      getUserData: (email) ->
+        new Promise((resolve, reject) ->
+          resolve(userObjects[String(email)])
+        )
 
   afterEach () ->
     clock.restore()
+    storage = {}
 
   describe 'Socket Server', ->
 
@@ -88,14 +109,10 @@ describe 'Socket server test suite', ->
       socketClient.on 'connect', onConnect
       socketClient.on 'message', onMessage
 
-    it 'should accept callback to persist expired user data', (done) ->
+    it 'should accept storage object to persist expired user data', (done) ->
+      sinon.spy(storage, 'persist')
       email1 = 'some12@example.org'
-      onExpire = (email, userData) ->
-        expect(email).to.eql(email1)
-        expect(userData).to.eql
-          messages: [{text: 'some text', url: 'some/path'}, {text: 'another text', url: 'another/path'}]
-        done()
-      socketServer.setExpireCallback onExpire
+      socketServer.setStorage storage
       socketServer.setUserToken email1, 'a token'
       socketServer.sendMessage email1, {text: 'some text', url: 'some/path'}
       socketServer.sendMessage email1, {text: 'another text', url: 'another/path'}
@@ -103,20 +120,14 @@ describe 'Socket server test suite', ->
         token: 'a token'
         messages: [{text: 'some text', url: 'some/path'}, {text: 'another text', url: 'another/path'}]
       clock.tick 500
+      spyCall = storage.persist.getCall(0)
+      expect(spyCall.calledWith(email1, {messages: [{text: 'some text', url: 'some/path'}, {text: 'another text', url: 'another/path'}]})).to.be.true
+      done()
 
-    it 'should populate user object on token event using supplied callback', (done) ->
+    it 'should populate user object on token event using supplied storage object', (done) ->
       clock.restore()
       email1 = 'some21@example.org'
       email2 = 'some22@example.org'
-      userObjects =
-        'some21@example.org':
-          messages: [{text: 'some text', path: 'some/path'}]
-        'some22@example.org':
-          messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
-      getUserData = (email) ->
-        new Promise((resolve, reject) ->
-          resolve(userObjects[String(email)])
-          )
       onConnect = ->
         expect(R.pick(['token', 'messages'],cache.get(email1))).to.eql
           token: 'some token'
@@ -129,7 +140,7 @@ describe 'Socket server test suite', ->
           token: 'another token'
           messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
         done()
-      socketServer.setPopulateCallback(getUserData)
+      socketServer.setStorage storage
       socketServer.setUserToken email1, 'some token'
       socketServer.setUserToken email2, 'another token'
       socketClient = getSocketClient port
@@ -138,49 +149,38 @@ describe 'Socket server test suite', ->
       setTimeout validateCache, 150
 
     it 'should persist all pending messages if client sent wrong token', (done) ->
-      clock.restore()
+      sinon.spy(storage, 'persist')
       email1 = 'some25@example.org'
-      onExpire = (email, userData) ->
-        if email == email1
-          expect(userData).to.eql
-            messages: [{text: 'some text', url: 'some/path/goes/here'}]
-          done()
       onConnect = ->
         @emit 'token', {email: email1, token: 'wrong token'}
-      socketServer.setExpireCallback onExpire
+      socketServer.setStorage storage
       socketServer.setUserToken email1, 'a token'
       socketServer.sendMessage email1, {text: 'some text', url: 'some/path/goes/here'}
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
+      clock.tick 500
+      spyCall = storage.persist.getCall(0)
+      expect(spyCall.calledWith(email1, {messages: [{text: 'some text', url: 'some/path/goes/here'}]})).to.be.true
+      done()
 
     it 'should persist incoming messages if user is not online', (done) ->
-      clock.restore()
+      sinon.spy(storage, 'persist')
       email1 = 'some26@example.org'
-      onExpire = (email, userData) ->
-        if email == email1
-          expect(userData).to.eql
-            messages: [{text: 'some text', url: 'some/path/goes/here'}]
-          done()
-      socketServer.setExpireCallback onExpire
-      socketServer.sendMessage email1, {text: 'some text', url: 'some/path/goes/here'}
+      socketServer.setStorage storage
+      socketServer.sendMessage email1, {text: 'some text', url: 'soome/path/goes/here'}
+      clock.tick 500
+      spyCall = storage.persist.getCall(0)
+      expect(spyCall.calledWith(email1, {messages: [{text: 'some text', url: 'soome/path/goes/here'}]})).to.be.true
+      done()
 
-    it 'should be able to pass callbacks via constrctor config parameter', (done) ->
+    it 'should be able to pass storage object via constrctor config parameter', (done) ->
       clock.restore()
+      sinon.spy(storage, 'persist')
       email1 = 'some27@example.org'
-      onExpire = (email, userData) ->
-        if email == email1
-          expect(userData).to.eql
-            messages: [{text: 'text 27 times', url: 'some/27/goes/here'}]
-          done()
-      getUserData = (email) ->
-        userObjects =
-          'some27@example.org':
-            messages: [{text: 'text 27 times', url: 'some/27/goes/here'}]
-          'some22@example.org':
-            messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
-        new Promise((resolve, reject) ->
-          resolve(userObjects[String(email)])
-          )
+      validate = ->
+        spyCall = storage.persist.getCall(0)
+        expect(spyCall.calledWith(email1, {messages: [{text: 'text 27 times', url: 'some/27/goes/here'}]})).to.be.true
+        done()
       onConnect = ->
         @emit 'token', {email: email1, token: 'wrong token'}
       someNewCache = new NodeCache
@@ -188,59 +188,51 @@ describe 'Socket server test suite', ->
       someNewServer = new SocketServer
         port: ++port
         cache: someNewCache
-        onExpire: onExpire
-        getUserData: getUserData
+        storage: storage
       someClient = getSocketClient port
       someNewServer.setUserToken email1, 'a token'
       someClient.on 'connect', onConnect
+      setTimeout validate, 500
 
     it 'should be able to deliver new component requests count', (done) ->
       clock.restore()
+      sinon.spy(storage, 'persist')
       email1 = 'some28@example.org'
       email2 = 'some30@example.org'
-      getUserData = (userId) ->
-        userObjects =
-          'some28@example.org':
-            componentRequestCount: [{data: 'data1'},{data: 'data2'},{data: 'data3'},{data: 'data4'}]
-          'some30@example.org':
-            messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
-            componentRequests: [{data: 'data1'},{data: 'data2'},{data: 'data3'}]
-        new Promise((resolve, reject) ->
-          resolve(userObjects[String(userId)])
-          )
-      onExpire = (email, userData) ->
-        if email == email2
-          expect(userData).to.eql
-            messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
-            componentRequests: [{data: 'data1'},{data: 'data2'},{data: 'data3'},{data: 'data1'},{data: 'data2'},{data: 'data3'}]
-          done()
+      validate = ->
+        spyCall = storage.persist.getCall(0)
+        expect(spyCall.calledWith(email2, {
+          messages: [{text: 'yet another text', path: 'another/path'}, {text: 'an', path: 'll'}]
+          componentRequests: [{data: 'data1'},{data: 'data2'},{data: 'data3'},{data: 'data1'},{data: 'data2'},{data: 'data3'}]
+        })).to.be.true
+        done()
       onConnect = ->
         @emit 'token', {email: email1, token: 'token28'}
       onComponentRequest = (componentRequestCount) ->
         expect(componentRequestCount).to.eql(4)
-      socketServer.setExpireCallback onExpire
-      socketServer.setPopulateCallback getUserData
+      socketServer.setStorage storage
       socketServer.setUserToken email1, 'token28'
       socketServer.setUserToken email2, 'token30'
       socketServer.sendComponentRequests email2, [{data: 'data1'},{data: 'data2'},{data: 'data3'}]
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
       socketClient.on 'componentRequest', onComponentRequest
+      setTimeout validate, 600
 
     it 'should not persist empty messages and component request counts', (done) ->
+      clock.restore()
       email1 = 'some29@example.org'
-      onExpire = (email, userData) -> return
+      mock = sinon.mock(storage)
+      mock.expects('persist').never()
       onConnect = ->
         @emit 'token', {email: email1, token: 'some token'}
-      clock.restore()
-      expireSpy = sinon.spy(onExpire)
-      socketServer.setExpireCallback expireSpy
+      socketServer.setStorage storage
       socketServer.setUserToken email1, 'some token'
       socketServer.sendMessage email1, {text: 'some text', path: 'some/path'}
       socketServer.sendComponentRequests email1, [{data: 'data'}]
       socketClient = getSocketClient port
       socketClient.on 'connect', onConnect
       setTimeout(( ->
-        expect(expireSpy.withArgs(email1).callCount).to.eql(0)
+        mock.verify()
         done()
         ), 600)

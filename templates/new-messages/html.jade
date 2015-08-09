@@ -21,11 +21,11 @@ html(lang="en")
                     if messages && messages.length > 0
                         div
                             h1 Новые сообщения!
-                            div У вас #{messages.length} новых сообщений
+                            div Новых сообщений: #{messages.length}
                     if componentRequests && componentRequests.length > 0
                         div
                             h1 Новые запросы!
-                            div У вас #{componentRequests.length} новых запросов по вашим фильтрам
+                            div Новых запросов по вашим фильтрам: #{componentRequests.length}
         #page-bottom
             #footer.page_container
                 .footer-row

@@ -53,9 +53,8 @@ describe 'Mailer test suite', ->
         expect(res.envelope).to.eql
           from: 'jane.doe@example.org'
           to: ['john.doe@example.org']
+      .finally ->
         done()
-      .catch (err) ->
-        console.error 'error sending mail: ', err
 
   describe '#bulkSend()', ->
 

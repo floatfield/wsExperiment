@@ -11,6 +11,7 @@ Storage = require '../lib/storage'
 describe 'MailManager test suite', ->
 
   mailManager = {}
+  mailer = {}
   storage = new Storage('test-user-data-store')
 
   before ->
@@ -30,7 +31,6 @@ describe 'MailManager test suite', ->
     mailManager = new MailManager
       mailer: mailer
       sender: 'jane.doe@example.org'
-      dbName: 'testing-purpose-database'
 
   describe '#sendPassword()', ->
 
@@ -59,6 +59,21 @@ describe 'MailManager test suite', ->
           from: 'jane.doe@example.org'
       .catch (err) ->
         throw err
+      .finally ->
+        done()
+
+    it 'should be able to support debug "to" email address and send letters there', (done) ->
+      anotherManager = new MailManager
+        mailer: mailer
+        sender: 'jane.doe@example.org'
+        debugRecipient: 'bromshveiger@gmail.com'
+      email = 'john.doe@example.org'
+      link = 'http://restore.expample.org/restore/your/password'
+      anotherManager.sendPasswordRestorationLetter email, link
+      .then (res) ->
+        expect(res.envelope).to.eql
+          to: ['bromshveiger@gmail.com']
+          from: 'jane.doe@example.org'
       .finally ->
         done()
 

@@ -9,8 +9,8 @@ class DullCache extends EventEmitter
 
   getExpireCallback: (key, value) ->
     () =>
-      @emit 'expire', key, value
       @del key
+      @emit 'expire', key, value
 
   set: (key, value, ttl) ->
     key = String(key)
