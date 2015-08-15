@@ -30,10 +30,10 @@ class MailManager
       link: link
     @mailer.sendEmail 'password-restore-letter', config, locals
 
-  sendUserNotificationLetter: (email, text) ->
+  sendUserNotificationLetter: (email, paras) ->
     config = @getTransporterConfig email, 'Системное уведомление'
     locals =
-      text: text
+      paras: paras
     @mailer.sendEmail 'user-notifications', config, locals
 
   notifyMailingList: ->

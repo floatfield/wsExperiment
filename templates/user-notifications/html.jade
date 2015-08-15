@@ -19,7 +19,9 @@ html(lang="en")
                         #sub-nav-cell-right.sub-nav-cell
                 #content.page_container
                     h1 #{email}
-                    div #{text}
+                    div
+                        each para in paras
+                            p #{para}
         #page-bottom
             #footer.page_container
                 .footer-row

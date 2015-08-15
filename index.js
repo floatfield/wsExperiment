@@ -130,6 +130,17 @@ app.post('/password_email', function(req, res) {
 
 app.post('/user_notification', function(req, res) {
   var emails = req.body.emails,
-    text = req.body.text;
-  mailManager.sendUserNotificationLetter(emails, text);
+      paras = R.filter(function (para) {
+        return para.length > 0;
+      }, req.body.text.split('\n'));
+  mailManager.sendUserNotificationLetter(emails, paras);
+});
+
+app.post('/user_warning', function (req, res) {
+  var email = req.body.email,
+      message = req.body.warning;
+  socketServer.sendWarning(email, message);
+  res.send({
+    success: true
+  });
 });

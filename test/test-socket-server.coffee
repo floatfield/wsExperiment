@@ -236,3 +236,26 @@ describe 'Socket server test suite', ->
         mock.verify()
         done()
         ), 600)
+
+    it 'should be able to send a warning to user and not to store it in database', (done) ->
+      clock.restore()
+      email1 = 'some@example.org'
+      email2 = 'another@example.org'
+      mock = sinon.mock(storage)
+      mock.expects('persist').never()
+      onConnect = ->
+        @emit 'token', {email: email1, token: 'aToken'}
+      onWarning = (message) ->
+        expect(message).to.eql('some warning goes here')
+      socketServer.setStorage storage
+      socketServer.setUserToken email1, 'aToken'
+      socketServer.setUserToken email2, 'theToken'
+      socketServer.sendWarning email1, 'some warning goes here'
+      socketServer.sendWarning email2, 'another warning'
+      socketClient = getSocketClient port
+      socketClient.on 'connect', onConnect
+      socketClient.on 'userWarning', onWarning
+      setTimeout(( ->
+        mock.verify()
+        done()
+      ),600)
