@@ -144,3 +144,19 @@ app.post('/user_warning', function (req, res) {
     success: true
   });
 });
+
+app.post('/interlocutor_blocked', function (req, res) {
+  var email = req.body.email,
+      correspondenceId = req.body.correspondenceId;
+  socketServer.sendInterlocutorBlockedNotification(email, correspondenceId);
+  res.send({
+    success: true
+  });
+});
+
+app.post('/debug', function (req, res) {
+  console.log(req.body.data);
+  res.send({
+    success: true
+  });
+});

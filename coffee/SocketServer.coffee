@@ -59,6 +59,11 @@ class SocketServer
         componentRequests: if requests then requests else []
         userWarnings: if warnings then warnings else []
 
+  sendInterlocutorBlockedNotification: (email, correspondenceId) ->
+    val = @cache.get email
+    if val and val.socket
+      val.socket.emit 'interlocutorBlocked', correspondenceId
+
   sendMessage: (email, message) ->
     @addInfoChunk email, {messages: [message]}
 

@@ -259,3 +259,25 @@ describe 'Socket server test suite', ->
         mock.verify()
         done()
       ),600)
+
+    it 'should be able to send notification to a user that his interlocutor is blocked', (done) ->
+      clock.restore()
+      email1 = 'some654@example.org'
+      mock = sinon.mock(storage)
+      mock.expects('persist').never()
+      onConnect = ->
+        @emit 'token', {email: email1, token: 'aToken'}
+      blockedCallback = sinon.spy()
+      socketServer.setStorage storage
+      socketServer.setUserToken email1, 'aToken'
+      socketClient = getSocketClient port
+      socketClient.on 'connect', onConnect
+      socketClient.on 'interlocutorBlocked', blockedCallback
+      setTimeout(( ->
+        socketServer.sendInterlocutorBlockedNotification(email1, 25)
+      ), 200)
+      setTimeout((->
+        mock.verify()
+        expect(blockedCallback.calledWith(25)).to.be.true
+        done()
+      ), 600)
