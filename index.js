@@ -13,6 +13,7 @@ var express = require('express'),
   nodemailer = require('nodemailer'),
   smtpPool = require('nodemailer-smtp-pool'),
   schedule = require('node-schedule'),
+  argv = require('minimist')(process.argv.slice(2)),
   smtpConfig = {
     port: 2525,
     host: 'mail.used-part.ru'
@@ -32,14 +33,26 @@ var express = require('express'),
     templatesDir: '../templates',
     transporter: transporter
   }),
-  mailManager = new MailManager({
+  mailManagerConfig = {
     mailer: mailer,
     sender: 'Биржа запчастей <admin@used-part.ru>',
-    storage: storage,
-    debugRecipient: 'bromshveiger@gmail.com' // TODO: remove in production
-  });
+    storage: storage
+  };
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
+if(argv.h){
+  console.log('node index.js [-d email] [--tls-accept]');
+  process.exit();
+}
+
+if(argv.d || argv['debug-recipient']){
+  var debugRecipient = argv.d ? argv.d : argv['debugRecipient'];
+  mailManagerConfig = R.assoc('debugRecipient', debugRecipient, mailManagerConfig);
+}
+var mailManager = new MailManager(mailManagerConfig);
+
+if(argv['tls-accept']){
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
+}
 
 schedule.scheduleJob('0 1 * * *', function() {
   var newStorage = new Storage(util.generateDbName());
