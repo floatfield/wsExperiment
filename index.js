@@ -16,7 +16,11 @@ var express = require('express'),
   argv = require('minimist')(process.argv.slice(2)),
   smtpConfig = {
     port: 2525,
-    host: 'mail.used-part.ru'
+    host: 'mail.used-part.ru',
+    auth: {
+      user: 'parts',
+      pass: 'somePassPhrase'
+    }
   },
   transporter = nodemailer.createTransport(smtpPool(smtpConfig)),
   dbName = util.generateDbName(),
