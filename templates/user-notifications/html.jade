@@ -3,28 +3,10 @@ html(lang="en")
     head
         title= "Системное уведомление"
     body
-        style
-            | #page-bottom {background-image: url(#{images}back_op_025.png), url(#{images}back_op_075.png),url(#{images}lines_footer.png), linear-gradient(#cf1f36,#9c1022);}
-            | #page-top {background-image: url(#{images}back.png);}
-        #page-wrapper
-            #page-top.page_container
-                #logo
-                    a
-                        img#logo-image(src=images + 'logo.png')
-            #page-middle
-                #sub-nav-container.page_container
-                    #sub-nav
-                        #sub-nav-cell-left.sub-nav-cell
-                            = "Системное уведомление"
-                        #sub-nav-cell-right.sub-nav-cell
-                #content.page_container
-                    h1 #{email}
-                    div
-                        each para in paras
-                            p #{para}
-        #page-bottom
-            #footer.page_container
-                .footer-row
-                    .left-cell
-                        img#logo-image-footer(src=images + 'logo_footer.png')
-                    .right-cell
+        #page_container
+            #main_header
+                .header Системное уведомление
+            #content
+                div
+                    each para in paras
+                        p #{para}
