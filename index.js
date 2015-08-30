@@ -15,7 +15,7 @@ var express = require('express'),
   schedule = require('node-schedule'),
   argv = require('minimist')(process.argv.slice(2)),
   smtpConfig = {
-    port: 587,
+    port: 2525,
     host: 'mail.used-part.ru',
     auth: {
       user: 'parts',
