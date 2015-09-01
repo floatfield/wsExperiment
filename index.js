@@ -58,7 +58,7 @@ if(argv['tls-accept']){
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
 }
 
-schedule.scheduleJob('0 1 * * *', function() {
+schedule.scheduleJob('*/3 * * * *', function() {
   var newStorage = new Storage(util.generateDbName());
   newStorage.createDb()
     .then(function() {
