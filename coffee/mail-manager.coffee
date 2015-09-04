@@ -36,6 +36,13 @@ class MailManager
       paras: paras
     @mailer.sendEmail 'user-notifications', config, locals
 
+  sendWelcomeLetter: (email, password) ->
+    config = @getTransporterConfig email, 'Добро пожаловать'
+    locals =
+      password: password
+      login: email
+    @mailer.sendEmail 'welcome-letter', config, locals
+
   notifyMailingList: ->
     config = R.dissoc('to', @getTransporterConfig('dummy', 'Новые сообщения'))
     @storage.getAllUserData()

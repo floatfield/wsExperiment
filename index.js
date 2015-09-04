@@ -171,8 +171,10 @@ app.post('/interlocutor_blocked', function (req, res) {
   });
 });
 
-app.post('/debug', function (req, res) {
-  console.log(req.body.data);
+app.post('/welcome', function (req, res) {
+  var email = req.body.email,
+      password = req.body.password;
+  mailManager.sendWelcomeLetter(email, password);
   res.send({
     success: true
   });
