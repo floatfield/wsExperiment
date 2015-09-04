@@ -30,12 +30,11 @@ class MailManager
       link: link
     @mailer.sendEmail 'password-restore-letter', config, locals
 
-  sendUserNotificationLetter: (email, paras) ->
-    config = @getTransporterConfig email, 'Системное уведомление'
-    locals =
-      paras: paras
-    @mailer.sendEmail 'user-notifications', config, locals
-
+  sendUserNotificationLetter: (dataList) ->
+    config = R.dissoc('to', @getTransporterConfig('dummy', 'Системное уведомление'))
+    dataList = dataList
+    @mailer.bulkSend 'user-notifications', config, dataList
+    
   sendWelcomeLetter: (email, password) ->
     config = @getTransporterConfig email, 'Добро пожаловать'
     locals =

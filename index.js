@@ -146,11 +146,17 @@ app.post('/password_email', function(req, res) {
 });
 
 app.post('/user_notification', function(req, res) {
-  var emails = req.body.emails,
+  var emails = req.body.emails.split(','),
       paras = R.filter(function (para) {
         return para.length > 0;
       }, req.body.text.split('\n'));
-  mailManager.sendUserNotificationLetter(emails, paras);
+      dataList =emails.map(function (email) {
+        return {
+          email: email,
+          paras: paras
+        };
+      });
+  mailManager.sendUserNotificationLetter(dataList);
 });
 
 app.post('/user_warning', function (req, res) {
