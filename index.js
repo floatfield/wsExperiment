@@ -20,6 +20,9 @@ var express = require('express'),
     auth: {
       user: 'parts',
       pass: 'somePassPhrase'
+    },
+    tls: {
+      rejectUnauthorized: false
     }
   },
   transporter = nodemailer.createTransport(smtpPool(smtpConfig)),
