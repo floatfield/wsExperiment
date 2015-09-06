@@ -86,7 +86,7 @@ class SocketServer
         val.socket = socket
         @sendPendingMessages email
         socket.on 'disconnect', =>
-          delete @cache.get(email).socket
+          delete @cache.get(email).socket if @cache.get(email)
       else
         @cache.ttl(email, 0)
 
