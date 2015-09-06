@@ -18,8 +18,15 @@ html(lang="en")
       #content
         div
           p Здравствуйте,
-          each para in paras
-            p #{para}
+          case daysBeforeExpire
+            when '0'
+              p Действие вашего тарифного плана истекает #{expiresAt}
+            when '3'
+            when '2'
+              p Действие вашего тарифного плана истекает через #{daysBeforeExpire} дня.
+            default
+              p Действие вашего тарифного плана истекает через #{daysBeforeExpire} день.
+          
       #footer
           a(href="http://биржазапчастей.рф") биржазапчастей.рф
     

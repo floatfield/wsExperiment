@@ -177,10 +177,9 @@ app.post('/interlocutor_blocked', function (req, res) {
   });
 });
 
-app.post('/welcome', function (req, res) {
-  var email = req.body.email,
-      password = req.body.password;
-  mailManager.sendWelcomeLetter(email, password);
+app.post('/expire_notifications', function (req, res) {
+  var localData = JSON.parse(req.body.data);
+  mailManager.sendTariffExpireLetter(localData);
   res.send({
     success: true
   });

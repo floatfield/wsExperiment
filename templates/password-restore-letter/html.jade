@@ -1,26 +1,28 @@
 doctype html
 html(lang="en")
-    head
-    body
-        style
-            | #page-bottom {background-image: url(#{images}back_op_025.png), url(#{images}back_op_075.png),url(#{images}lines_footer.png), linear-gradient(#cf1f36,#9c1022);}
-            | #page-top {background-image: url(#{images}back.png);}
-        #page-wrapper
-            #page-top.page_container
-                #logo
-                    a
-                        img#logo-image(src=images + 'logo.png')
-            #page-middle
-                #sub-nav-container.page_container
-                    #sub-nav
-                        #sub-nav-cell-left.sub-nav-cell
-                            = "Системное уведомление"
-                        #sub-nav-cell-right.sub-nav-cell
-                #content.page_container
-                    a(href="#{link}") для восстановления пройдите по этой ссылке
-        #page-bottom
-            #footer.page_container
-                .footer-row
-                    .left-cell
-                        img#logo-image-footer(src=images + 'logo_footer.png')
-                    .right-cell
+  head
+    meta(charset="UTF-8")
+  body
+    #wrapper
+      #header
+        .image_wrapper
+          img(src="data:image/png;base64," + logo)
+        #menu
+          ul
+            li 
+              a(href="http://биржазапчастей.рф/rules") правила
+            li
+              a(href="http://биржазапчастей.рф/support") техподдержка
+            li
+              a(href="http://биржазапчастей.рф/contacts") контакты
+      #content
+        div
+          p Здравствуйте,
+          p
+            |Для восстановления пароля пройдите по 
+            |#[a(href=link) этой] 
+            |ссылке.
+          
+      #footer
+          a(href="http://биржазапчастей.рф") биржазапчастей.рф
+    

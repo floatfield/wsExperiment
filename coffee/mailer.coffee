@@ -4,6 +4,8 @@ isIPv4 = (entry) ->
 EmailTemplate = require('email-templates').EmailTemplate
 path = require 'path'
 Promise = require 'bluebird'
+base64 = require 'node-base64-image'
+basify = Promise.promisify base64.base64encoder
 DullCache = require './dull-cache'
 R = require 'ramda'
 ownIp = R.compose(
@@ -13,13 +15,15 @@ ownIp = R.compose(
         R.flatten,
         R.values
     )(require('os').networkInterfaces())
-imagesUrl = 'http://' + ownIp + '/bundles/parts/res/'
+imagesUrl = 'http://used-part.ru/bundles/parts/res/'
+inlineBase64 = require 'nodemailer-plugin-inline-base64'
 
 class Mailer
 
   constructor: (config) ->
     @templatesDir = config.templatesDir
     @transporter = config.transporter
+    @transporter.use 'compile', inlineBase64
     @send = Promise.promisify @transporter.sendMail, @transporter
     @cache = new DullCache
       stdTTL: 30000
@@ -32,7 +36,12 @@ class Mailer
       @cache.set templateName, render
     else
       render = @cache.get templateName
-    render R.assoc('images', imagesUrl, locals)
+    basify imagesUrl + 'logo.png', {}
+    .then (base64image) ->
+      logo = base64image.toString 'base64'
+      render R.assoc('logo', logo, locals)
+    .catch (err) ->
+      console.error 'error rendering mail template: ', err
 
   sendEmail: (templateName, config, locals) ->
     @renderTemplate templateName, locals

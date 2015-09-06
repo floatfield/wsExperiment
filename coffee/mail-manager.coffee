@@ -21,6 +21,7 @@ class MailManager
   sendPasswordLetter: (email, password) ->
     config = @getTransporterConfig email, 'Пароль к вашей учетной записи'
     locals =
+      login: email
       password: password
     @mailer.sendEmail 'password-letter', config, locals
 
@@ -32,15 +33,11 @@ class MailManager
 
   sendUserNotificationLetter: (dataList) ->
     config = R.dissoc('to', @getTransporterConfig('dummy', 'Системное уведомление'))
-    dataList = dataList
     @mailer.bulkSend 'user-notifications', config, dataList
-    
-  sendWelcomeLetter: (email, password) ->
-    config = @getTransporterConfig email, 'Добро пожаловать'
-    locals =
-      password: password
-      login: email
-    @mailer.sendEmail 'welcome-letter', config, locals
+
+  sendTariffExpireLetter: (dataList) ->
+    config = R.dissoc('to', @getTransporterConfig('dummy', 'Окончание срока действия тарифного плана'))
+    @mailer.bulkSend 'tariff-expire', config, dataList
 
   notifyMailingList: ->
     config = R.dissoc('to', @getTransporterConfig('dummy', 'Новые сообщения'))

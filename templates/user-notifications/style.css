@@ -1,28 +1,60 @@
-html, body {
-  font-family: Ubuntu, sans-serif;
+body{
+  font-family: sans-serif;
+  background-color: #F1F1F1;
 }
-#main_header {
-  background: rgba(0, 0, 0, 0) linear-gradient(#fcfcfc, #cfcfcf) repeat scroll 0 0;
-  margin: 10px auto 30px auto;
-  border-radius: 8px;
-  max-height: 100px;
-  min-height: 70px;
-  padding-top: 30px;
-  width: 70%;
+
+a{
+  color: #B40E23;
 }
-#main_header > .header {
-  color: #ae0d22;
-  font-size: 24pt;
-  font-weight: 500;
-  padding-left: 2%;
-  text-align: left;
-}
-#content {
-  margin: 10px auto 30px auto;
-  width: 70%;
-}
-#content > div {
-  margin: auto 7%;
-  font-size: 18pt;
-  font-weight: 400;
-}
+
+#wrapper > div{
+  width: 650px;
+  margin: 10px auto;
+  min-height: 100px;
+  background-color: white;
+  padding-left: 25px;
+  padding-right: 25px;
+  border-radius: 2px;
+  }
+
+#wrapper > #header > .image_wrapper{
+  float: left;
+  }
+
+  #wrapper > #header > .image_wrapper > img{
+    width: 200px;
+  }
+
+#wrapper > #header > #menu{
+  float: right;
+  }
+
+  #wrapper > #header > #menu > ul{
+    padding: 0;
+    }
+
+    #wrapper > #header > #menu > ul > li{
+      display: inline-block;
+      margin: 10px 15px;
+      }
+
+#wrapper > #content{
+  clear: both;
+  min-height: 300px;
+  }
+
+  #wrapper > #content > div{
+    margin: 0 20px;
+    padding: 20px 0;
+  }
+
+#wrapper > #footer{
+  text-align: center;
+  font-size: 10pt;
+  min-height: 40pt;
+  }
+
+  #wrapper > #footer > a{
+    line-height: 40pt;
+    vertical-align: middle;
+  }
