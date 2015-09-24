@@ -24,3 +24,9 @@ module.exports =
   generateDbName: ->
     now = new Date()
     now.toDateString().split(' ').map((str) -> str.toLowerCase()).join('-') + '-' + [++nextIndex, 'user-data'].join('-')
+  formatDate: (date) ->
+    date.toISOString().replace(/T/, ' ').replace(/\..+/, '')
+  logObject: (logger, message, object) ->
+    logger.log 'info', "#{message} --- %j", object, {
+      time: this.formatDate(new Date())
+    }

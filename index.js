@@ -40,10 +40,17 @@ var express = require('express'),
     templatesDir: '../templates',
     transporter: transporter
   }),
+  winston = require('winston'),
+  logger = new winston.Logger({
+    transports: [
+      new winston.transports.Console()
+    ]
+  }),
   mailManagerConfig = {
     mailer: mailer,
     sender: 'Биржа запчастей <admin@used-part.ru>',
-    storage: storage
+    storage: storage,
+    logger: logger
   };
 
 if(argv.h){
@@ -61,7 +68,10 @@ if(argv['tls-accept']){
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
 }
 
-schedule.scheduleJob('*/3 * * * *', function() {
+schedule.scheduleJob('*/30 * * * *', function() {
+
+  logger.log('info', 'shcedule job', {time: util.formatDate(new Date())});
+
   var newStorage = new Storage(util.generateDbName());
   newStorage.createDb()
     .then(function() {
@@ -128,6 +138,10 @@ app.post('/message', function(req, res) {
 app.post('/request_notification', function(req, res) {
   var email = req.body.email,
     requests = R.values(JSON.parse(req.body.requests));
+  util.logObject(logger, 'request notification', {
+    recipient: email,
+    requests: requests
+  });
   socketServer.sendComponentRequests(email, requests);
   res.send({
     success: true

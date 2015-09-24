@@ -1,5 +1,6 @@
 Promise = require 'bluebird'
 R = require 'ramda'
+util = require './util.js'
 
 class MailManager
 
@@ -7,8 +8,8 @@ class MailManager
     @mailer = config.mailer
     @sender = config.sender
     @storage = config.storage || {}
-    if config.debugRecipient
-      @debugRecipient = config.debugRecipient
+    @debugRecipient = config.debugRecipient if config.debugRecipient
+    @logger = config.logger if config.logger
 
   getTransporterConfig: (email, subject) ->
     config =
@@ -49,6 +50,8 @@ class MailManager
           locals.email = @debugRecipient
           locals
         )(dataList)
+      if @logger
+        util.logObject @logger, 'all user data list', dataList
       @mailer.bulkSend 'new-messages', config, dataList
 
 module.exports = MailManager
