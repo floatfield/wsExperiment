@@ -43,7 +43,8 @@ var express = require('express'),
   winston = require('winston'),
   logger = new winston.Logger({
     transports: [
-      new winston.transports.Console()
+      new winston.transports.Console(),
+      new winston.transports.File({filename: "debuginfo.log"})
     ]
   }),
   mailManagerConfig = {
