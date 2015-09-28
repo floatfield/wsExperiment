@@ -20,11 +20,15 @@ html(lang="en")
           p Здравствуйте,
           if messages && messages.length > 0
             div
-              h1 Новые сообщения!
-              div Новых сообщений: #{messages.length}
+              div У вас есть новые сообщения!
+              ul
+                each message in messages
+                  li
+                    a(href="#{message.correspondenceUrl}", class="correspondence")= message.componentRequestName 
+                    span.badge +#{message.messageCount}
           if componentRequests && componentRequests.length > 0
             div
-              h1 Новые запросы!
+              div Новые запросы!
               div Новых запросов по вашим фильтрам: #{componentRequests.length}
       #footer
           a(href="http://биржазапчастей.рф") биржазапчастей.рф

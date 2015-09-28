@@ -12,6 +12,9 @@ getBodyFromRes = (res) ->
 
 mergeAdd = require('./util').mergeAdd
 
+groupByCorrespondence = R.groupBy (message) ->
+  message.correspondenceId
+
 class Storage
 
   constructor: (dbName) ->
@@ -122,6 +125,21 @@ class Storage
           R.map(R.pick(['email','messages','componentRequests'])),
           R.pluck('value')
         )(res.rows)
+    .then (userData) ->
+      userData.forEach (dataLine) ->
+        rearrangedMessages = R.compose(
+          R.map((messageGroup) ->
+            {
+              messageCount: messageGroup.length
+              correspondenceUrl: 'http://биржазапчастей.рф' + messageGroup[0].link
+              componentRequestName: messageGroup[0].message.componentRequestName
+            }
+            ),
+          R.values,
+          groupByCorrespondence
+        )(dataLine.messages) if dataLine.messages
+        dataLine.messages = rearrangedMessages
+      userData
     .catch (err) ->
       console.error 'error getting all user data:'
       console.error err
