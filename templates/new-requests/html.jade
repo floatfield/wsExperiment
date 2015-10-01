@@ -19,12 +19,10 @@ html(lang="en")
         div
           p Здравствуйте,
           div
-            div Вы получили новые предложения по заявкам на сайте БиржаЗапчастей.рф
-            ul
-              each message in messages
-                li
-                  a(href="#{message.correspondenceUrl}", class="correspondence")= message.componentRequestName 
-                  span.badge +#{message.messageCount}
+            div На сайте БиржаЗапчастей.рф появились новые заявки по вашим фильтрам
+            div.request_count Новых запросов : #{componentRequests.length}
+            div
+              a(href="http://биржазапчастей.рф/salesman/requests") Для просмотра заявок, перейдите на сайт
       #footer
           a(href="http://биржазапчастей.рф") биржазапчастей.рф
           

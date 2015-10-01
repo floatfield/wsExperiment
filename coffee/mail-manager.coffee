@@ -1,6 +1,15 @@
 Promise = require 'bluebird'
 R = require 'ramda'
 
+filterOut = (property) ->
+  R.compose(
+    R.filter((entry) -> entry[property]),
+    R.map(R.pick([property, 'email']))
+  )
+  
+substituteEmail = (email) ->
+  R.forEach((entry) -> entry.email = email)
+
 class MailManager
 
   constructor: (config) ->
@@ -40,15 +49,17 @@ class MailManager
     @mailer.bulkSend 'tariff-expire', config, dataList
 
   notifyMailingList: ->
-    config = R.dissoc('to', @getTransporterConfig('dummy', 'Новые сообщения'))
+    messConfig = R.dissoc('to', @getTransporterConfig('dummy', 'Новые предложения на вашу заявку на БиржаЗапчастей.рф'))
+    compReqConfig = R.dissoc('to', @getTransporterConfig('dummy', 'Новые заявки на сайте БиржаЗапчастей.рф'))
     @storage.getAllUserData()
     .bind @
     .then (dataList) ->
+      compReqList = filterOut('componentRequests')(dataList)
+      messList = filterOut('messages')(dataList)
       if @debugRecipient
-        dataList = R.map((locals) =>
-          locals.email = @debugRecipient
-          locals
-        )(dataList)
-      @mailer.bulkSend 'new-messages', config, dataList
+        substituteEmail(@debugRecipient)(compReqList)
+        substituteEmail(@debugRecipient)(messList)
+      @mailer.bulkSend 'new-messages', messConfig, messList
+      @mailer.bulkSend 'new-requests', compReqConfig, compReqList
 
 module.exports = MailManager
